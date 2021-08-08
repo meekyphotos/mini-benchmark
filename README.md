@@ -3,22 +3,26 @@
 ![Coverage](https://sonar.experive.com/api/project_badges/measure?project=meekyphotos_mini-benchmark&metric=coverage)
 ![Maintainability Rating](https://sonar.experive.com/api/project_badges/measure?project=meekyphotos_mini-benchmark&metric=sqale_rating)
 
-mini-benchmark is a tool for building, running, and analysing nano/micro/milli/macro benchmarks written in Kotlin.
-If you need precise benchmarks, you should use JMH. 
+mini-benchmark is a tool for building, running, and analysing nano/micro/milli/macro benchmarks written in Kotlin. If you need precise benchmarks, you should use JMH.
 
 # Getting started
 
 ## Add dependency
+
 This package is hosted here on github.com, there add to your repositories section the following:
+
 ```xml
-  <repository>
-    <id>github</id>
-    <url>https://maven.pkg.github.com/meekyphotos/*</url>
-  </repository>
+
+<repository>
+  <id>github</id>
+  <url>https://maven.pkg.github.com/meekyphotos/*</url>
+</repository>
 ```
+
 Then in your dependencies:
 
 ```xml
+
 <dependency>
   <groupId>com.experive</groupId>
   <artifactId>mini-benchmark</artifactId>
@@ -26,23 +30,25 @@ Then in your dependencies:
   <scope>test</scope>
 </dependency>
 ```
+
 To get the latest version, check the release menu
 
 # Usage
 
 ```kotlin
   // instantiate a benchmark runner
-  val runner = BenchmarkRunner(mode = Mode.Throughput(), timeUnit = TimeUnit.MILLISECONDS)
-  
-  // add methods to test, with their parameters
-  runner.add(this::testSleep, 1)
-  
-  // call runAll to execute all the methods
-  runner.runAll()
+val runner = BenchmarkRunner(mode = Mode.Throughput(), timeUnit = TimeUnit.MILLISECONDS)
+
+// add methods to test, with their parameters
+runner.add(this::testSleep, 1)
+
+// call runAll to execute all the methods
+runner.runAll()
 
 ```
 
 Sample output:
+
 ```
 # Warmup: 5 iterations
 # Measurement: 10 iterations
@@ -91,9 +97,12 @@ Iteration 10: 63.87 ops/s
 ```
 
 ## Configure your runner
+
 |Parameter|Default|Description|
 |---------|-------|-----------|
 |warmup|5|Number of iterations performed before starting to record the execution. The warmup allows to reduce the overhead caused by the framework and allow the JVM to perform the necessary optimization to the code under test|
 |iterations|10|Number of iterations measured, the result will always be the average of the executions, to have a reliable output you should tune the number of iterations accordingly|
 |timeUnit|MILLISECONDS|Unit of measure used in the output, all measurements are done in nanos|
 |mode|Mode.Avgt|There are two modes: Average time and Throughput. Throughput calculates the number of method call per unit|
+|throttle|1000|If iteration is greater than throttle, then print an output line once every _throttle_ times|
+

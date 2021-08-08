@@ -1,9 +1,12 @@
 package com.experive.benchmark
 
+import com.google.common.truth.Truth
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
@@ -27,6 +30,13 @@ internal class BenchmarkRunnerTest {
         val runner = BenchmarkRunner(mode = Mode.Throughput(), timeUnit = TimeUnit.SECONDS)
         runner.add(this::testSleep, 1)
         runner.add(this::testSleep, 10)
+        runner.runAll()
+    }
+
+    @Test
+    internal fun throttleOutputWhenIterationIsOver1000() {
+        val runner = BenchmarkRunner(mode = Mode.Throughput(), timeUnit = TimeUnit.SECONDS, iterations = 10000)
+        runner.add(this::noop)
         runner.runAll()
     }
 
@@ -63,6 +73,33 @@ internal class BenchmarkRunnerTest {
         verify(exactly = 16) { beforeEach.run() }
         verify(exactly = 16) { afterEach.run() }
         verify(exactly = 16) { mockFunction.call(10) }
+    }
+
+    @Test
+    internal fun shouldNotExecuteWarmupRun() {
+        val mockFunction = spyk(this::noop)
+        BenchmarkRunner(warmup = 0, iterations = 1)
+            .add(mockFunction)
+            .runAll()
+        verify(exactly = 1) { mockFunction.call() }
+    }
+
+    @Test
+    @DisplayName("If iteration count is negative or zero, it should throw illegal argument")
+    internal fun shouldThrowExceptionWhenInitializingWarmup() {
+        val t = assertThrows<IllegalStateException> {
+            BenchmarkRunner(warmup = -1)
+        }
+        Truth.assertThat(t).hasMessageThat().isEqualTo("Warmup cannot be negative")
+    }
+
+    @Test
+    @DisplayName("If iteration count is negative or zero, it should throw illegal argument")
+    internal fun shouldThrowExceptionWhenInitializing() {
+        val t = assertThrows<IllegalStateException> {
+            BenchmarkRunner(iterations = 0)
+        }
+        Truth.assertThat(t).hasMessageThat().isEqualTo("Iteration count should be greater than zero")
     }
 
     fun testSleep(amount: Int) {

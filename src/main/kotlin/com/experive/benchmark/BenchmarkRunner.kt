@@ -7,11 +7,39 @@ import kotlin.reflect.KFunction
 import kotlin.system.measureNanoTime
 
 class BenchmarkRunner(
+    /**
+     * Number of iterations performed before starting to record the execution.
+     * The warmup allows to reduce the overhead caused by the framework and
+     * allow the JVM to perform the necessary optimization to the code under test
+     */
     private val warmup: Int = 5,
+
+    /**
+     * Number of iterations measured, the result will always be the average
+     * of the executions, to have a reliable output you should tune the number
+     * of iterations accordingly
+     */
     private val iterations: Int = 10,
+
+    /**
+     * Unit of measure used in the output, all measurements are done in nanos regardless of this parameter
+     */
     private val timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
+
+    /**
+     * If iteration is greater than throttle, then print an output line once every _throttle_ times
+     */
+    private val throttle: Int = THROTTLE,
+
+    /**
+     * Display mode: Average time or Throughput
+     */
     private val mode: Mode = Mode.Avgt()
 ) {
+    init {
+        check(iterations >= 1) { "Iteration count should be greater than zero" }
+        check(warmup >= 0) { "Warmup cannot be negative" }
+    }
 
     private var beforeEach: Runnable = Runnable {}
     private var afterEach: Runnable = Runnable {}
@@ -19,31 +47,49 @@ class BenchmarkRunner(
     private var afterAll: Runnable = Runnable {}
     private val tests = ArrayList<Benchmark>()
 
+    /**
+     * Register a runnable that is execute before each execution (incl. warmup)
+     */
     fun doBeforeEach(b: Runnable): BenchmarkRunner {
         this.beforeEach = b
         return this
     }
 
+    /**
+     * Register a runnable that is executed after each execution (incl. warmup)
+     */
     fun doAfterEach(b: Runnable): BenchmarkRunner {
         this.afterEach = b
         return this
     }
 
+    /**
+     * Register a runnable that is executed before each benchmark
+     */
     fun doBeforeAll(b: Runnable): BenchmarkRunner {
         this.beforeAll = b
         return this
     }
 
+    /**
+     * Register a runnable that is executed after each benchmark
+     */
     fun doAfterAll(b: Runnable): BenchmarkRunner {
         this.afterAll = b
         return this
     }
 
+    /**
+     * Add a new benchmark to the comparison
+     */
     fun add(underTest: KFunction<*>, vararg args: Any?): BenchmarkRunner {
         tests.add(Benchmark(underTest, args))
         return this
     }
 
+    /**
+     * Execute all registered benchmark
+     */
     fun runAll() {
         println("# Warmup: $warmup iterations")
         println("# Measurement: $iterations iterations")
@@ -54,12 +100,8 @@ class BenchmarkRunner(
             beforeAll.run()
             try {
                 doWarmUp(bench, unit)
-                var maxExecution = 0.0
-                var sum = 0.0
                 println("# Benchmarking")
-                val pair = doIteration(bench, sum, maxExecution, unit)
-                maxExecution = pair.first
-                sum = pair.second
+                val (maxExecution, sum) = doIteration(bench, unit)
                 val avg = sum / iterations
                 results.add(
                     StatRow(
@@ -81,9 +123,9 @@ class BenchmarkRunner(
     }
 
     @SuppressWarnings("SpreadOperator")
-    private fun doIteration(bench: Benchmark, sum: Double, maxExecution: Double, unit: String): Pair<Double, Double> {
-        var sum1 = sum
-        var maxExecution1 = maxExecution
+    private fun doIteration(bench: Benchmark, unit: String): Pair<Double, Double> {
+        var sum = 0.0
+        var maxExecution = 0.0
         for (i in 1..iterations) {
             beforeEach.run()
             val nano = measureNanoTime {
@@ -91,11 +133,13 @@ class BenchmarkRunner(
             }
             afterEach.run()
             val runValue = mode.interpret(convertDuration(timeUnit, nano.toDouble()))
-            sum1 += runValue
-            maxExecution1 = maxOf(maxExecution1, runValue)
-            println("Iteration $i: ${mode.getFormatted(runValue, unit)}")
+            sum += runValue
+            maxExecution = maxOf(maxExecution, runValue)
+            if (i % throttle == 0 || iterations < throttle) {
+                println("Iteration $i: ${mode.getFormatted(runValue, unit)}")
+            }
         }
-        return Pair(maxExecution1, sum1)
+        return Pair(maxExecution, sum)
     }
 
     @SuppressWarnings("SpreadOperator")
@@ -109,7 +153,9 @@ class BenchmarkRunner(
                 }
                 afterEach.run()
                 val runValue = mode.interpret(convertDuration(timeUnit, nano.toDouble()))
-                println("# Warmup Iteration ( $i / $warmup ) - ${mode.getFormatted(runValue, unit)}")
+                if (i % throttle == 0 || warmup < throttle) {
+                    println("# Warmup Iteration ( $i / $warmup ) - ${mode.getFormatted(runValue, unit)}")
+                }
             }
         }
     }
@@ -139,11 +185,12 @@ class BenchmarkRunner(
     }
 
     companion object {
-        const val NANOSECONDS_RATE = 1
-        const val MICROSECONDS_RATE = 0.001
-        const val MILLISECONDS_RATE = 1e-6
-        const val SECONDS_RATE = 1e-9
-        const val MINUTES_RATE = 1.6667e-11
-        const val HOURS_RATE = 2.7778e-13
+        private const val NANOSECONDS_RATE = 1
+        private const val MICROSECONDS_RATE = 0.001
+        private const val MILLISECONDS_RATE = 1e-6
+        private const val SECONDS_RATE = 1e-9
+        private const val MINUTES_RATE = 1.6667e-11
+        private const val HOURS_RATE = 2.7778e-13
+        private const val THROTTLE = 1000
     }
 }
