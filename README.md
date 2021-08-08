@@ -1,7 +1,31 @@
-# mini-benchmark
+# Mini benchmark
+
+![Coverage](https://sonar.experive.com/api/project_badges/measure?project=meekyphotos_mini-benchmark&metric=coverage)
+![Maintainability Rating](https://sonar.experive.com/api/project_badges/measure?project=meekyphotos_mini-benchmark&metric=sqale_rating)
 
 mini-benchmark is a tool for building, running, and analysing nano/micro/milli/macro benchmarks written in Kotlin.
 If you need precise benchmarks, you should use JMH. 
+
+# Getting started
+
+## Add dependency
+This package is hosted here on github.com, there add to your repositories section the following:
+```xml
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/meekyphotos/*</url>
+  </repository>
+```
+Then in your dependencies:
+
+```xml
+<dependency>
+  <groupId>com.experive</groupId>
+  <artifactId>mini-benchmark</artifactId>
+  <version>LATEST VERSION</version>
+</dependency>
+```
+To get the latest version, check the release menu
 
 # Usage
 
