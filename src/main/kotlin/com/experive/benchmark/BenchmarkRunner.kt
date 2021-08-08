@@ -5,10 +5,6 @@ import java.util.concurrent.TimeUnit
 import kotlin.reflect.KFunction
 import kotlin.system.measureNanoTime
 
-typealias Block = () -> Unit
-
-private class Benchmark(val underTest: KFunction<*>, val args: Array<out Any?>)
-
 class BenchmarkRunner(
   private val warmup: Int = 5,
   private val iterations: Int = 10,
@@ -16,28 +12,28 @@ class BenchmarkRunner(
   private val mode: Mode = Mode.Avgt()
 ) {
 
-  private var beforeEach: Block = {}
-  private var afterEach: Block = {}
-  private var beforeAll: Block = {}
-  private var afterAll: Block = {}
+  private var beforeEach: Runnable = Runnable {}
+  private var afterEach: Runnable = Runnable {}
+  private var beforeAll: Runnable = Runnable {}
+  private var afterAll: Runnable = Runnable {}
   private val tests = ArrayList<Benchmark>()
 
-  fun doBeforeEach(b: Block): BenchmarkRunner {
+  fun doBeforeEach(b: Runnable): BenchmarkRunner {
     this.beforeEach = b
     return this
   }
 
-  fun doAfterEach(b: Block): BenchmarkRunner {
+  fun doAfterEach(b: Runnable): BenchmarkRunner {
     this.afterEach = b
     return this
   }
 
-  fun doBeforeAll(b: Block): BenchmarkRunner {
+  fun doBeforeAll(b: Runnable): BenchmarkRunner {
     this.beforeAll = b
     return this
   }
 
-  fun doAfterAll(b: Block): BenchmarkRunner {
+  fun doAfterAll(b: Runnable): BenchmarkRunner {
     this.afterAll = b
     return this
   }
@@ -53,16 +49,16 @@ class BenchmarkRunner(
     println("# Benchmark mode: $mode, $unit")
     val results = ArrayList<StatRow>()
     tests.forEach { bench ->
-      beforeAll()
+      beforeAll.run()
       try {
         if (warmup > 0) {
           println("# Warming up")
           for (i in 0..warmup) {
-            beforeEach()
+            beforeEach.run()
             val nano = measureNanoTime {
               bench.underTest.call(*bench.args)
             }
-            afterEach()
+            afterEach.run()
             val runValue = mode.interpret(convertDuration(timeUnit, nano.toDouble()))
             println("# Warmup Iteration ( $i / $warmup ) - ${mode.getFormatted(runValue, unit)}")
           }
@@ -71,11 +67,11 @@ class BenchmarkRunner(
         var sum = 0.0
         println("# Benchmarking")
         for (i in 1..iterations) {
-          beforeEach()
+          beforeEach.run()
           val nano = measureNanoTime {
             bench.underTest.call(*bench.args)
           }
-          afterEach()
+          afterEach.run()
           val runValue = mode.interpret(convertDuration(timeUnit, nano.toDouble()))
           sum += runValue
           maxExecution = maxOf(maxExecution, runValue)
@@ -94,7 +90,7 @@ class BenchmarkRunner(
           )
         )
       } finally {
-        afterAll()
+        afterAll.run()
       }
     }
     println()
