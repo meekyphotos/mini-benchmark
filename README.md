@@ -23,6 +23,7 @@ Then in your dependencies:
   <groupId>com.experive</groupId>
   <artifactId>mini-benchmark</artifactId>
   <version>LATEST VERSION</version>
+  <scope>test</scope>
 </dependency>
 ```
 To get the latest version, check the release menu
