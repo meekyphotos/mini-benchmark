@@ -18,8 +18,8 @@ internal class BenchmarkRunnerTest {
     internal fun testComparisonInAvgtMode() {
         val runner = BenchmarkRunner()
         runner.add(this::testSleep, 1)
-        runner.add(this::testSleep, 10)
-        runner.runAll()
+            .add(this::testSleep, 10)
+            .runAll()
     }
 
     @Test

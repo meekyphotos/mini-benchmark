@@ -39,8 +39,9 @@ class BenchmarkRunner(
         return this
     }
 
-    fun add(underTest: KFunction<*>, vararg args: Any?) {
+    fun add(underTest: KFunction<*>, vararg args: Any?): BenchmarkRunner {
         tests.add(Benchmark(underTest, args))
+        return this
     }
 
     fun runAll() {
