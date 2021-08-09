@@ -1,8 +1,10 @@
 package com.experive.benchmark
 
 import com.experive.benchmark.utils.MarkdownTableWriter
-import java.util.Locale
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics
 import java.util.concurrent.TimeUnit
+import java.util.stream.Stream
+import kotlin.math.sqrt
 import kotlin.reflect.KFunction
 import kotlin.system.measureNanoTime
 
@@ -101,16 +103,14 @@ class BenchmarkRunner(
             try {
                 doWarmUp(bench, unit)
                 println("# Benchmarking")
-                val (maxExecution, sum) = doIteration(bench, unit)
-                val avg = sum / iterations
+                val (average, error) = doIteration(bench, unit)
                 results.add(
                     StatRow(
-                        bench.underTest.name,
-                        bench.args.joinToString(", "),
+                        bench,
                         mode.name,
                         iterations.toString(),
-                        String.format(Locale.ENGLISH, "%.3f", avg),
-                        String.format(Locale.ENGLISH, "± %.3f", maxExecution - avg),
+                        average,
+                        error,
                         unit
                     )
                 )
@@ -122,10 +122,56 @@ class BenchmarkRunner(
         MarkdownTableWriter(results).print()
     }
 
+    fun compareImplementations(parameters: Stream<Parameters>, vararg implementations: KFunction<*>) {
+        println("# Warmup: $warmup iterations")
+        println("# Measurement: $iterations iterations")
+        val unit = mode.unit(symbol(timeUnit))
+        println("# Comparison mode: $mode, $unit")
+        beforeAll.run()
+        val winner = HashMap<KFunction<*>, Int>()
+        var scenarios = 0
+        parameters.forEach {
+            val results = ArrayList<StatRow>()
+            var best: StatRow? = null
+            for (implementation in implementations) {
+                val benchmark = Benchmark(implementation, it())
+                doWarmUp(benchmark, unit)
+                println("# Benchmarking ${benchmark.name}")
+                val (average, error) = doIteration(benchmark, unit)
+                val res = StatRow(
+                    benchmark,
+                    mode.name,
+                    iterations.toString(),
+                    average,
+                    error,
+                    unit
+                )
+                best = mode.bestOf(best, res)
+                results.add(res)
+            }
+            println()
+            if (best != null) {
+                winner.compute(best.benchmark.underTest) { _, old -> (old ?: 0).inc() }
+                MarkdownTableWriter(results)
+                    .printRelative(best.score, mode)
+            }
+            scenarios++
+        }
+        winner.entries.sortedBy { -it.value }.forEach {
+            println("${Benchmark.nameOf(it.key)} - Won: ${it.value} out of $scenarios")
+        }
+        afterAll.run()
+    }
+
     @SuppressWarnings("SpreadOperator")
     private fun doIteration(bench: Benchmark, unit: String): Pair<Double, Double> {
-        var sum = 0.0
-        var maxExecution = 0.0
+        val stats = SummaryStatistics()
+
+        /*
+            new_Avg = Avg + (x[n]-x[0])/n
+            new_Var = Var + (x[n]-new_Avg + x[0]-Avg)(x[n] - x[0])/(n-1)
+            new_StdDev = sqrt(new_Var)
+         */
         for (i in 1..iterations) {
             beforeEach.run()
             val nano = measureNanoTime {
@@ -133,13 +179,12 @@ class BenchmarkRunner(
             }
             afterEach.run()
             val runValue = mode.interpret(convertDuration(timeUnit, nano.toDouble()))
-            sum += runValue
-            maxExecution = maxOf(maxExecution, runValue)
+            stats.addValue(runValue)
             if (i % throttle == 0 || iterations < throttle) {
                 println("Iteration $i: ${mode.getFormatted(runValue, unit)}")
             }
         }
-        return Pair(maxExecution, sum)
+        return Pair(stats.mean, stats.standardDeviation / sqrt(iterations.toDouble()))
     }
 
     @SuppressWarnings("SpreadOperator")

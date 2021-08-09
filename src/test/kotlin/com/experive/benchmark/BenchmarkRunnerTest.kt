@@ -108,6 +108,37 @@ internal class BenchmarkRunnerTest {
 
     fun noop() = Unit
 
+    fun contains(str: String) = "hello".contains(str)
+    fun containsIndex(str: String) = "hello".indexOf(str) >= 0
+
+    @Test
+    internal fun testComparison() {
+        BenchmarkRunner()
+            .compareImplementations(
+                Stream.of(
+                    arguments("hell"),
+                    arguments("no"),
+                    arguments("hello")
+                ),
+                this::contains,
+                this::containsIndex
+            )
+    }
+
+    @Test
+    internal fun testComparisonInThroughput() {
+        BenchmarkRunner(mode = Mode.Throughput(), timeUnit = TimeUnit.SECONDS)
+            .compareImplementations(
+                Stream.of(
+                    arguments("hell"),
+                    arguments("no"),
+                    arguments("hello")
+                ),
+                this::contains,
+                this::containsIndex
+            )
+    }
+
     companion object {
         @JvmStatic
         fun timeUnits(): Stream<Arguments> {
