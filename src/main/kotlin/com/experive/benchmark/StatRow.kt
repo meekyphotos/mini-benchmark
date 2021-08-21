@@ -17,10 +17,18 @@ class StatRow(
     val scoreAsString = humanReadable(score)
     val errorAsString = "± " + humanReadable(error)
     val name: String = benchmark.name
-    val args: String = benchmark.args.joinToString(",")
+    val args: String = benchmark.args.joinToString(",") {
+        val str = it.toString()
+        if (str.length > MAX_LEN) {
+            str.substring(0, MAX_LEN) + "..."
+        } else {
+            str
+        }
+    }
 
     companion object {
         private const val ONE_K = 1000.0
+        private const val MAX_LEN = 17
         private const val ONEHUNDRED_K = 999950.0
         fun humanReadable(doubleValue: Double): String {
             var value = doubleValue
